@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>Chart.js Heatmap Sample</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <h1>Looking inside language models (GPT2)</h1>
+        </div>
+        <div class="row">
+            <div class="col-8">
+                <input type="text" id="prompt" class="form-control"
+                    value="<|endoftext|>Tokyo is the capital of">
+            </div>
+            <div class="col-4">
+                <button type="button" class="btn btn-primary" onclick="run_inference()">Submit</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 border-top border-bottom my-2">
+                <iframe id="logit_lens" height="520px" width="100%"></iframe>
+            </div>
+        </div>
+
+        <script>
+            let token = Math.random().toString(32).substring(2)
+            api_host = "0.0.0.0:8000"
+            init()
+            // get_image()
+
+            async function init() {
+                const response = await fetch(`http://${api_host}/init?token=${token}`)
+                    .then(function (response) {
+                        const data = response.json();
+                        return data;
+                    }
+                    )
+                    .then((data) => {
+                        console.log("initialized");
+                    })
+            }
+
+            async function end() {
+                const response = await fetch(`http://${api_host}/end?token=${token}`)
+                    .then(function (response) {
+                        const data = response.json();
+                        return data;
+                    }
+                    )
+                    .then((data) => {
+                        console.log("ended");
+                    })
+            }
+
+            window.onbeforeunload = function () {
+                end()
+            }
+
+            async function run_inference() {
+                model_prompt = document.getElementById("prompt").value;
+                const response = await fetch(`http://${api_host}/inference?prompt=${model_prompt}`)
+                    .then(function (response) {
+                        const data = response.json();
+                        return data;
+                    }
+                    )
+                    .then((data) => {
+                        console.log(data);
+                        iframe = document.getElementById("logit_lens");
+                        iframe.srcdoc = data["html"];
+                    })
+            }
+
+            async function value_lens() {
+                token = document.getElementById("token").value;
+                layer = document.getElementById("layer").value;
+                head = document.getElementById("head").value;
+                const response = await fetch(`http://${api_host}/value_lens?token=${token}&layer=${layer}&head=${head}`)
+                    .then(function (response) {
+                        const data = response.json();
+                        return data;
+                    }
+                    )
+                    .then((data) => {
+                        console.log(data);
+                        tbody = document.getElementById("value-lens-tbody");
+                        tbody.innerHTML = "";
+                        for (let i = 0; i < data["top_n_logits"].length; i++) {
+                            const tr = document.createElement("tr");
+                            const td1 = document.createElement("td");
+                            const td2 = document.createElement("td");
+                            td1.textContent = data["top_n_logits"][i]["token"];
+                            td2.textContent = data["top_n_logits"][i]["logit"];
+                            tr.appendChild(td1);
+                            tr.appendChild(td2);
+                            tbody.appendChild(tr);
+                        }
+                        get_image(data["image"])
+                    })
+            }
+
+            async function get_image(path){
+                img_element = document.getElementById("wov_heatmap");
+                const response = await fetch(`http://${api_host}/image?path=${path}`)
+                    .then(function (response) {
+                        const data = response.blob()
+                        return data;
+                    }
+                    )
+                    .then(blob =>{
+                        return URL.createObjectURL(blob); // Data URI発行
+                    }).then(dataUri =>{
+                        img_element.src = dataUri;
+                        // $('.image').attr('src', dataUri);
+                    })
+            }
+
+        </script>
+
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+            crossorigin="anonymous"></script>
+</body>
+
+</html>
