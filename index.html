@@ -19,7 +19,14 @@
         <div class="row">
             <div class="col-8">
                 <input type="text" id="prompt" class="form-control"
-                    value="<|endoftext|>Tokyo is the capital of">
+                    value="Tokyo is the capital of", name="prompt", 
+                    list="promptOptions">
+                <datalist id="promptOptions">
+                    <option value="Tokyo is the capital of">
+                    <option value="The capital of Japan is">
+                    <option value="The president of the United States is Mr.">
+                    <option value="The prime minister of the Japan is Mr.">
+                </datalist>
             </div>
             <div class="col-4">
                 <button type="button" class="btn btn-primary" onclick="run_inference()">Submit</button>

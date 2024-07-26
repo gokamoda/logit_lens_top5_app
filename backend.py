@@ -131,7 +131,9 @@ class Web:
         self.data = {}
 
     def inference(self, prompt):
+        prompt = "<|endoftext|> "+prompt
         inputs = self.tokenizer([prompt], return_tensors="pt")
+        print("Actual prompt:", prompt)
         with torch.no_grad():
             output = self.model.generate(
                 input_ids=inputs["input_ids"].to(self.device),
@@ -149,8 +151,7 @@ class Web:
         tokenized_prompt = [self.tokenizer.decode(i) for i in inputs["input_ids"][0]]
         generated_text = self.tokenizer.decode(sequences)
         logits_for_logit_lens = self.compute_logits_for_logit_lens_from_hidden_states(hidden_states)
-
-        self.write_html(logits_for_logit_lens, tokenized_prompt)
+        self.write_html(logits_for_logit_lens[:, 1:], tokenized_prompt[1:])
 
     def compute_logits_for_logit_lens_from_hidden_states(
         self,
@@ -194,7 +195,7 @@ class Web:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(template.render(data))
 
-model_name = "gpt2"
+model_name = "gpt2-medium"
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 web = Web(model_name, device)
