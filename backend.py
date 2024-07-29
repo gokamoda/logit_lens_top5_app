@@ -151,7 +151,7 @@ class Web:
         tokenized_prompt = [self.tokenizer.decode(i) for i in inputs["input_ids"][0]]
         generated_text = self.tokenizer.decode(sequences)
         logits_for_logit_lens = self.compute_logits_for_logit_lens_from_hidden_states(hidden_states)
-        self.write_html(logits_for_logit_lens[:, 1:], tokenized_prompt[1:])
+        self.write_html(logits_for_logit_lens[1:, 1:], tokenized_prompt[1:])
 
     def compute_logits_for_logit_lens_from_hidden_states(
         self,
