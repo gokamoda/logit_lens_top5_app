@@ -8,10 +8,30 @@ from fastapi.responses import FileResponse
 from starlette.middleware.cors import CORSMiddleware  # 追加
 from jinja2 import Environment, FileSystemLoader
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, GPT2LMHeadModel, GPTNeoXForCausalLM
 from torchtyping import TensorType
 from my_torchtyping import LAYER_PLUS_1, SEQUENCE, HIDDEN_DIM, VOCAB
 from typing import Literal
+
+# model_name = "gpt2-medium"
+# model_name = "EleutherAI/pythia-160m"
+model_name = "EleutherAI/pythia-410m"
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+field_names = {
+    "gpt2": {
+        "model": "model",
+        "layers": "h",
+        "lm_head": "lm_head",
+        "ln_f": "ln_f", 
+    },
+    "gptneox": {
+        "model": "gpt_neox",
+        "layers": "layers",
+        "lm_head": "embed_out",
+        "ln_f": "final_layer_norm",
+    },
+}
 
 def get_heatmap_colors(
     weight, positive=(7, 47, 97), negative=(103, 0, 31), direction=1
@@ -129,6 +149,8 @@ class Web:
         self.output_dir = Path("latest/logit_lens_web")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.data = {}
+        if isinstance(self.model, GPTNeoXForCausalLM):
+            self.field_names = field_names["gptneox"]
 
     def inference(self, prompt):
         prompt = "<|endoftext|> "+prompt
@@ -157,8 +179,8 @@ class Web:
         self,
         hidden_states: TensorType[LAYER_PLUS_1, SEQUENCE, HIDDEN_DIM],
     ):
-        lm_head = self.model.lm_head
-        layer_norm = self.model.transformer.ln_f
+        lm_head = getattr(self.model, self.field_names["lm_head"])
+        layer_norm = getattr(getattr(self.model, self.field_names["model"]), self.field_names["ln_f"])
         num_layers, _, _ = hidden_states.shape
 
         logits_by_layer = []
@@ -195,8 +217,7 @@ class Web:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(template.render(data))
 
-model_name = "gpt2-medium"
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
 
 web = Web(model_name, device)
 
